@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Red Blue Game</title>
+
+<style>
+
+body{
+margin:0;
+background:white;
+font-family:sans-serif;
+text-align:center;
+}
+
+canvas{
+display:block;
+margin:auto;
+background:white;
+}
+
+#ui{
+position:absolute;
+top:10px;
+width:100%;
+font-size:24px;
+}
+
+#overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(255,255,255,0.6);
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+font-size:80px;
+}
+
+button{
+font-size:24px;
+padding:10px 30px;
+margin-top:20px;
+}
+
+body{
+margin:0;
+background:white;
+font-family:sans-serif;
+text-align:center;
+touch-action:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+Score: <span id="score">0</span>　
+Time: <span id="timer">60</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="overlay">
+<span id="count">3</span>
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas(){
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+}
+
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+let lastSpawn = 0;
+let balls=[];
+let score=0;
+let time=60;
+
+let running=false;
+
+const wallHeight=100;
+let wallY=canvas.height/2-wallHeight/2;
+
+const leftGoal=40;
+const rightGoal=canvas.width-40;
+
+let spawnInterval;
+let timerInterval;
+
+function spawnBall(){
+
+let color=Math.random()<0.5?"red":"blue";
+
+let angle=(Math.random()-0.5)*Math.PI/3;
+let speed=3+Math.random()*2;
+
+let vx=Math.cos(angle)*speed;
+let vy=Math.sin(angle)*speed;
+
+if(Math.random()<0.5) vx*=-1;
+
+balls.push({
+x:canvas.width/2,
+y:canvas.height/2,
+vx:vx,
+vy:vy,
+color:color
+});
+
+}
+
+function update(){
+
+let now = Date.now();
+let interval;
+
+if(time > 40){
+interval = 1300;
+}
+else if(time > 20){
+interval = 1000;
+}
+else{
+interval = 800;
+}
+
+if(running && now - lastSpawn > interval){
+spawnBall();
+lastSpawn = now;
+}
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+balls.forEach((b,i)=>{
+
+b.x+=b.vx;
+b.y+=b.vy;
+
+if(b.y<0||b.y>canvas.height) b.vy*=-1;
+
+if(b.x<80 && b.y>wallY && b.y<wallY+wallHeight){
+b.vx*=-1;
+}
+
+if(b.x>canvas.width-80 && b.y>wallY && b.y<wallY+wallHeight){
+b.vx*=-1;
+}
+
+if(b.x<leftGoal){
+
+if(b.color==="blue") score++;
+else score--;
+
+balls.splice(i,1);
+
+}
+
+if(b.x>rightGoal){
+
+if(b.color==="red") score++;
+else score--;
+
+balls.splice(i,1);
+
+}
+
+});
+
+draw();
+
+document.getElementById("score").innerText=score;
+
+if(running || balls.length>0){
+requestAnimationFrame(update);
+}else{
+showResult();
+}
+
+}
+
+function draw(){
+
+ctx.fillStyle="blue";
+ctx.fillRect(0,0,20,canvas.height);
+
+ctx.fillStyle="red";
+ctx.fillRect(canvas.width-20,0,20,canvas.height);
+
+ctx.fillStyle="black";
+
+ctx.fillRect(60,wallY,10,wallHeight);
+ctx.fillRect(canvas.width-70,wallY,10,wallHeight);
+
+balls.forEach(b=>{
+
+ctx.beginPath();
+ctx.arc(b.x,b.y,8,0,Math.PI*2);
+ctx.fillStyle=b.color;
+ctx.fill();
+
+});
+
+}
+
+function startGame(){
+
+balls=[];
+score=0;
+time=60;
+running=true;
+
+document.getElementById("score").innerText=0;
+document.getElementById("timer").innerText=60;
+
+timerInterval=setInterval(()=>{
+
+if(time>0){
+time--;
+document.getElementById("timer").innerText=time;
+}else{
+running=false;
+clearInterval(spawnInterval);
+}
+
+},1000);
+
+update();
+
+}
+
+function showResult(){
+
+const overlay=document.getElementById("overlay");
+
+overlay.innerHTML=
+`
+<div style="font-size:50px">Score: ${score}</div>
+<button onclick="restart()">もう一度遊ぶ</button>
+`;
+
+overlay.style.display="flex";
+
+}
+
+function restart(){
+
+clearInterval(spawnInterval);
+clearInterval(timerInterval);
+
+balls=[];
+score=0;
+time=60;
+running=false;
+
+document.getElementById("score").innerText=0;
+document.getElementById("timer").innerText=60;
+
+countdown();
+
+}
+
+function countdown(){
+
+let count=3;
+const overlay=document.getElementById("overlay");
+
+overlay.innerHTML=`<span id="count">${count}</span>`;
+
+let cd=setInterval(()=>{
+
+count--;
+
+if(count>0){
+
+overlay.innerHTML=`<span id="count">${count}</span>`;
+
+}else{
+
+clearInterval(cd);
+
+overlay.style.display="none";
+
+startGame();
+
+}
+
+},1000);
+
+}
+
+canvas.addEventListener("mousemove",(e)=>{
+
+const rect=canvas.getBoundingClientRect();
+let y=e.clientY-rect.top-wallHeight/2;
+
+if(y<0) y=0;
+if(y>canvas.height-wallHeight) y=canvas.height-wallHeight;
+
+wallY=y;
+
+});
+
+canvas.addEventListener("touchmove",(e)=>{
+
+const rect=canvas.getBoundingClientRect();
+let y=e.touches[0].clientY-rect.top-wallHeight/2;
+
+if(y<0) y=0;
+if(y>canvas.height-wallHeight) y=canvas.height-wallHeight;
+
+wallY=y;
+
+});
+
+countdown();
+
+</script>
+
+</body>
+</html>
