@@ -47,14 +47,6 @@ padding:10px 30px;
 margin-top:20px;
 }
 
-body{
-margin:0;
-background:white;
-font-family:sans-serif;
-text-align:center;
-touch-action:none;
-}
-
 </style>
 </head>
 
@@ -219,6 +211,7 @@ ctx.fill();
 
 function startGame(){
 
+lastSpawn = Date.now();
 balls=[];
 score=0;
 time=60;
